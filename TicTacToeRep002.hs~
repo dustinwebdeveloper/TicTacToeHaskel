@@ -1,0 +1,16 @@
+{-
+gameBoard =
+    [[1, 2, 3],
+     [4, 5, 6],
+     [7, 8, 9]]
+-}
+
+-- An open piece has an integer (1+index), Player piece, which is X or O
+type Piece
+    = Open Int
+    | Player Char
+    deriving (Show, Eq)
+-- [Piece 1, Piece 2, .. Piece 9] 
+
+main :: IO ()
+main = undefined
