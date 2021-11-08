@@ -93,8 +93,85 @@ showBoard board = concat $ intersperse boardBorder $ [top, middle, bottom]
 	middle = showBoardLine (drop 3 board)
 	bottom = showBoardLine (drop 6 board)
 
+-- Given current player's character char (piece), given other player's character char (piece)
+swapPlayers :: Char -> Char
+swapPlayers 'X' = 'O'
+swapPlayers 'O' = 'X'
+swapPlayers _ = error "swapPlayers only accepts the characters O or X"
+
+-- Given a board, player piece, and a position on board, check
+-- if the player given won vertically starting from the given position
+checkWonVertically :: [Piece] -> Piece -> Int -> Bool
+checkWonVertically board player index = topPos == player && middlePos == player && bottomPos == player
+    where
+	topPos = board !! index
+	middlePos = board !! (index + 3)
+	bottomPos = board !! (index + 6)
+
+playerWonVertically :: [Piece] -> Piece -> Bool
+playerWonVertically board player = or $ map (checkWonVertically board player) [0, 1, 2]
+
+-- Given a board, player, and position, check if the
+-- player won by making a full row of their piece
+checkWonHorizontally :: [Piece] -> Piece -> Int -> Bool
+checkWonHorizontally board player index = firstPos == player && secondPos == player && thirdPos == player
+    where
+	firstPos = board !! index
+	secondPos = board !! (index + 1)
+	thirdPos = board !! (index + 2)
+	
+-- will return true if the player given won at all horizontally
+playerWonHorizontally :: [Piece] -> Piece -> Bool
+playerWonHorizontally board player = or $ map (checkWonHorizontally board player) [0, 3, 6]
+
+{-
+[a,b,c,            [i,h,g,
+ d,e,f, (reversed)  f,e,d,
+ g,h,i]             c,b,a]
+-}
+
+-- Given board, player, starting pos, and step, return true if the next three
+-- pieces on the board are all the player's piece (they won)
+checkWonDiagonally :: [Piece] -> Piece -> Int -> Int -> Bool
+checkWonDiagonally board player index step = firstPos == player && secondPos == player && thirdPos == player
+    where
+	firstPos = board !! index
+	secondPos = board !! (index + step)
+	thirdPos = board !! (index + 2 * step)
+
+-- Given board, player, return true if they won at all diagonally
+playerWonDiagonally :: [Piece] -> Piece -> Bool
+playerWonDiagonally board player = wonFirstDiagonal || wonSecondDiagonal
+    where
+        wonFirstDiagonal = checkWonDiagonally board player 0 4
+	wonSecondDiagonal = checkWonDiagonally board player 2 2
+
+-- Given a board and a player, return true if they won at all
+playerWon :: [Piece] -> Piece -> Bool
+playerWon board player = playerWonDiagonally board player || playerWonHorizontally board player || playerWonVertically board player
+
+-- Return true if the game has become a tie
+tieGame :: [Piece] -> Bool
+tieGame board = all (\piece -> not (pieceIsOpen piece)) board
+
+-- Check if anyone won/tied, if not, continues game
+checkBoardState :: [Piece] -> Char -> IO ()
+checkBoardState board playerChr
+    | tieGame board                = putStrLn "It's a tie!"
+    | playerWon board (Player 'X') = putStrLn "Player X won!"
+    | playerWon board (Player 'O') = putStrLn "Player O won!"
+    | otherwise                    = runTicTacToe board (swapPlayers playerChr)
+
+-- Main loop that actually runs the tic tac toe game
 runTicTacToe :: [Piece] -> Char -> IO ()
-runTicTacToe board playerChr = undefined {-
+runTicTacToe board playerChr = do
+    putStrLn $ showBoard board           -- Show current state
+    rawChoice <- getPiecePosition board
+    -- Create the new board after placing the player's piece on it
+    let newBoard = placePiece board (Player playerChr) rawChoice
+    -- Check if anyone won, if not, loop again
+    checkBoardState newBoard playerChr
+{-
     >runTicTacToe will be recursively called
     putStrLn $ showBoard board
     rawChoice <- getPiecePosition board
@@ -103,4 +180,5 @@ runTicTacToe board playerChr = undefined {-
 -}
 
 main :: IO ()
-main = undefined
+main = runTicTacToe board 'X'
+    where board = [Open 1, Open 2, Open 3, Open 4, Open 5, Open 6, Open 7, Open 8, Open 9]
